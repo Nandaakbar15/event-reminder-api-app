@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Enum untuk membatasi nilai status agar konsisten
+enum ReminderStatus {
+  PENDING
+  NOTIFIED
+  CANCELLED // Opsional, jika user membatalkan tanpa menghapus
+}
+
+model User {
+  id        Int        @id @default(autoincrement())
+  email     String     @unique
+  name      String?
+  password  String     // Simpan dalam bentuk hash (misal: bcrypt)
+  reminders Reminder[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("users")
+}
+
+model Reminder {
+  id          Int            @id @default(autoincrement())
+  title       String         @db.VarChar(255) // e.g., "Team Meeting"
+  description String?        @db.Text         // e.g., agenda (opsional)
+  category    String?        @db.VarChar(50)  // e.g., "work", "personal" (opsional)
+  eventTime   DateTime                        // Gabungan tanggal & jam event
+  status      ReminderStatus @default(PENDING)
+  
+  // Relasi ke User
+  userId      Int
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  // Index untuk mempercepat query scheduler dan filter API
+  @@index([userId, status])
+  @@index([eventTime, status])
+  @@map("reminders")
+}
